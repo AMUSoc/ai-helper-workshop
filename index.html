@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>老師的 AI 小幫手工作坊</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: sticky tab nav + one content panel at a time; green-white classroom look */
+:root{
+  --bg:#FFFFFF; --fg:#14213D; --muted:#4F5D75; --faint:#9AA5B1;
+  --accent:#2A9D8F; --accent-ink:#1F7F73; --tint:#E6F4EF; --card:#F4F8F6; --line:#DCE5E1;
+  --warn-bg:#FFF4E8; --warn:#D9822B; --bad:#E76F51;
+  --code-bg:#14213D; --code-fg:#E9EEF5; --code-kw:#F4A261; --code-str:#8FE3C0; --code-cm:#8A9BB5;
+  --sans:'Noto Sans TC','Microsoft JhengHei','PingFang TC',sans-serif;
+  --mono:'JetBrains Mono','Courier New',monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1A2B; --fg:#E9EEF5; --muted:#B7C3D6; --faint:#6E7F99;
+  --accent:#5CC6B5; --accent-ink:#8ADACB; --tint:#16342F; --card:#16243A; --line:#24416B;
+  --warn-bg:#3A2A1A; --warn:#F4A261; --bad:#F08A72;
+  --code-bg:#070F1C; --code-fg:#E9EEF5; --code-kw:#F4A261; --code-str:#8FE3C0; --code-cm:#8A9BB5;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1A2B; --fg:#E9EEF5; --muted:#B7C3D6; --faint:#6E7F99;
+  --accent:#5CC6B5; --accent-ink:#8ADACB; --tint:#16342F; --card:#16243A; --line:#24416B;
+  --warn-bg:#3A2A1A; --warn:#F4A261; --bad:#F08A72;
+  --code-bg:#070F1C; --code-fg:#E9EEF5; --code-kw:#F4A261; --code-str:#8FE3C0; --code-cm:#8A9BB5;
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:17px;line-height:1.7}
+a{color:var(--accent-ink)}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:clamp(34px,6vw,56px);font-weight:900}
+h2{font-size:clamp(26px,4vw,36px);font-weight:900}
+h3{font-size:20px;font-weight:700}
+p{margin:0}
+.wrap{max-width:980px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* top bar */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:var(--bg);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:16px;padding-block:10px}
+.brand{font-weight:900;font-size:16px;color:var(--fg);text-decoration:none;white-space:nowrap}
+.brand span{color:var(--accent)}
+nav{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;flex:1;min-width:0}
+nav::-webkit-scrollbar{display:none}
+nav button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:700;font-size:15px;padding:8px 12px;border-radius:999px;cursor:pointer;white-space:nowrap}
+nav button[aria-selected="true"]{background:var(--tint);color:var(--accent-ink)}
+nav button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* panels */
+.panel{display:none;padding-block:36px 72px}
+.panel.on{display:block}
+.eyebrow{display:inline-block;font-size:13px;font-weight:800;letter-spacing:.08em;color:var(--accent-ink);border:2px solid var(--accent);border-radius:999px;padding:3px 12px;margin-bottom:14px}
+.lead{font-size:19px;color:var(--muted);max-width:40em;margin-top:14px}
+.sec{margin-top:44px;display:flex;flex-direction:column;gap:16px}
+.sec>h2{margin-bottom:4px}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.3fr 1fr;gap:32px;align-items:center}
+.leafbox{aspect-ratio:1;max-width:100%;background:var(--tint);border-radius:50% 0 50% 0;display:flex;align-items:center;justify-content:center}
+.leaf{width:46%;aspect-ratio:1;background:var(--accent);border-radius:0 50% 0 50%}
+.meta{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px 22px;color:var(--muted);font-size:15px}
+.meta b{color:var(--fg)}
+.cta{display:inline-block;margin-top:24px;background:var(--accent);color:#fff;font-weight:800;text-decoration:none;padding:12px 22px;border-radius:999px;border:0;font:inherit;font-weight:800;cursor:pointer}
+.cta:focus-visible,button.copy:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:var(--card);border-radius:18px;border-bottom:6px solid var(--accent);padding:22px 22px 18px;display:flex;flex-direction:column;gap:8px;min-width:0}
+.card.plain{border-bottom-color:var(--line)}
+.card.warn{background:var(--warn-bg);border-bottom-color:var(--warn)}
+.card .n{width:38px;height:38px;border-radius:11px;background:var(--accent);color:#fff;font-weight:900;display:flex;align-items:center;justify-content:center;font-size:18px}
+.card .k{font-size:13px;font-weight:800;letter-spacing:.06em;color:var(--accent-ink)}
+.card.warn .k{color:var(--warn)}
+.card p{color:var(--muted)}
+.card a.site{font-family:var(--mono);font-size:14px;word-break:break-all}
+
+/* timeline table */
+table{border-collapse:collapse;width:100%;font-size:15px}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+th,td{text-align:left;padding:10px 14px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child th{border-top:0;background:var(--tint);color:var(--accent-ink);font-size:13px;letter-spacing:.06em}
+td.t{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--muted)}
+td b{color:var(--fg)}
+
+/* steps */
+.step{border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.step header{display:flex;align-items:center;gap:14px}
+.step header .n{width:44px;height:44px;border-radius:13px;background:var(--accent);color:#fff;font-weight:900;font-size:20px;display:flex;align-items:center;justify-content:center;flex:none}
+.step header h3{font-size:22px;font-weight:900}
+.step header small{display:block;color:var(--muted);font-weight:500;font-size:14px}
+ol,ul{margin:0;padding-left:1.3em;display:flex;flex-direction:column;gap:6px}
+li{color:var(--muted)}
+li b{color:var(--fg)}
+.pass{background:var(--tint);border-radius:12px;padding:12px 16px;color:var(--accent-ink);font-weight:700}
+.note{background:var(--warn-bg);border-radius:12px;padding:12px 16px;color:var(--fg)}
+.note b{color:var(--warn)}
+
+/* code blocks */
+.code{position:relative;background:var(--code-bg);color:var(--code-fg);border-radius:14px;padding:18px 20px;overflow-x:auto;font-family:var(--mono);font-size:14px;line-height:1.65;min-width:0}
+.code pre{margin:0;white-space:pre}
+.code .kw{color:var(--code-kw)} .code .s{color:var(--code-str)} .code .cm{color:var(--code-cm)}
+.code .lbl{position:absolute;top:10px;left:16px;font-size:11px;letter-spacing:.1em;color:var(--code-cm)}
+.code.l pre{padding-top:16px}
+button.copy{position:absolute;top:10px;right:10px;border:1px solid var(--code-cm);background:transparent;color:var(--code-fg);font:inherit;font-family:var(--sans);font-size:12px;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer}
+button.copy.ok{background:var(--accent);border-color:var(--accent);color:#fff}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:15px}
+.kv dt{color:var(--muted);font-weight:700}
+.kv dd{margin:0;font-family:var(--mono);font-size:14px;word-break:break-all}
+
+/* checklist */
+.check{display:flex;flex-direction:column;gap:8px}
+.check label{display:flex;gap:12px;align-items:flex-start;background:var(--card);border-radius:12px;padding:12px 14px;cursor:pointer}
+.check input{width:20px;height:20px;margin-top:3px;accent-color:var(--accent);flex:none}
+.check label span{color:var(--fg)}
+.check label.done span{color:var(--faint);text-decoration:line-through}
+
+/* task cards */
+.task{display:flex;flex-direction:column;gap:10px}
+.task .prompt{position:relative;background:var(--bg);border:1px dashed var(--accent);border-radius:12px;padding:12px 14px;padding-right:76px;font-size:15px;color:var(--fg)}
+
+footer{border-top:1px solid var(--line);color:var(--faint);font-size:13px}
+footer .wrap{padding-block:20px;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
+
+@media (max-width:720px){
+  .hero{grid-template-columns:1fr}
+  .leafbox{max-width:220px}
+  .kv{grid-template-columns:1fr}
+}
+@media (prefers-reduced-motion:no-preference){
+  .panel.on{animation:fade .25s ease}
+  @keyframes fade{from{opacity:.4}to{opacity:1}}
+}
+</style>
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)} img{max-width:100%} [hidden]{display:none!important}</style>
+</head>
+<body>
+
+<div class="top"><div class="wrap">
+  <a class="brand" href="#home">毛焦點科技 ‧ <span>老師的 AI 小幫手</span></a>
+  <nav role="tablist" aria-label="頁面">
+    <button role="tab" data-tab="home" aria-selected="true">課程首頁</button>
+    <button role="tab" data-tab="prepare">開始前 10 分鐘</button>
+    <button role="tab" data-tab="steps">實作步驟</button>
+    <button role="tab" data-tab="cards">任務卡</button>
+    <button role="tab" data-tab="materials">材料</button>
+    <button role="tab" data-tab="help">卡住了</button>
+    <button role="tab" data-tab="more">進階與課後</button>
+  </nav>
+</div></div>
+
+<main class="wrap">
+
+<!-- ================= 首頁 ================= -->
+<section class="panel on" id="home" role="tabpanel">
+  <div class="hero">
+    <div>
+      <span class="eyebrow">在職專班 ‧ API 串接實作 ‧ 3 小時</span>
+      <h1>做一個<br>老師的 AI 小幫手</h1>
+      <p class="lead">不用會寫程式。三小時內，親手串一個會出題、會給作文回饋、記得你說過什麼的小幫手，回學校就能用。</p>
+      <div class="meta">
+        <span><b>日期</b>　[上課日期]</span>
+        <span><b>地點</b>　[學校 / 教室]</span>
+        <span><b>講者</b>　李冠霖 Oc ‧ 毛焦點科技 資訊長</span>
+      </div>
+      <button class="cta" data-go="prepare">開始前 10 分鐘準備 →</button>
+    </div>
+    <div class="leafbox"><div class="leaf"></div></div>
+  </div>
+
+  <div class="sec">
+    <h2>三小時後，你會帶走</h2>
+    <div class="cards">
+      <div class="card"><div class="n">1</div><h3>一個自己的小幫手</h3><p>角色是你設定的，會出題、會給作文回饋、會把課文改寫成低年級看得懂的版本。</p></div>
+      <div class="card"><div class="n">2</div><h3>看得懂 API</h3><p>以後聽到「串接」、「金鑰」、「API」，知道那是在做什麼，不再覺得是工程師的事。</p></div>
+      <div class="card"><div class="n">3</div><h3>一份帶回去的筆記本</h3><p>Colab 筆記本是你的了。回學校打開就能用，改一段中文就是一個新的小幫手。</p></div>
+    </div>
+    <p class="note">完全不會程式也沒關係。今天你要改的，<b>只有引號裡的中文</b>。程式都寫好了，你負責按播放鍵。</p>
+  </div>
+
+  <div class="sec">
+    <h2>180 分鐘怎麼走</h2>
+    <div class="tbl"><table>
+      <tr><th>時間</th><th>段落</th><th>做什麼</th></tr>
+      <tr><td class="t">00:00–00:10</td><td><b>開場</b></td><td>我是誰、毛焦點在做什麼、今天會做出什麼</td></tr>
+      <tr><td class="t">00:10–00:50</td><td><b>先搞懂</b></td><td>AI 小幫手能幫老師做什麼、API 是什麼（點餐比喻）、給小幫手的「班級公約」</td></tr>
+      <tr><td class="t">00:50–01:00</td><td>休息</td><td>登入 Google、Groq、Postman</td></tr>
+      <tr><td class="t">01:00–01:50</td><td><b>說第一句話</b></td><td>拿金鑰、先用滑鼠呼叫 AI、再用 Colab 呼叫一次</td></tr>
+      <tr><td class="t">01:50–02:00</td><td>休息</td><td>想好小幫手的名字、年級，找一段真實材料</td></tr>
+      <tr><td class="t">02:00–02:45</td><td><b>做出小幫手</b></td><td>寫班級公約、讓它記得對話、用任務卡出題與改作文</td></tr>
+      <tr><td class="t">02:45–03:00</td><td><b>分享收尾</b></td><td>自願 demo、帶回學校的三個原則、Q&amp;A</td></tr>
+    </table></div>
+  </div>
+
+  <div class="sec">
+    <h2>今天用的工具是誰</h2>
+    <div class="cards">
+      <div class="card plain"><div class="k">模型</div><h3>千問 Qwen3-32B</h3><p>阿里巴巴釋出的開放權重模型，中文很好。我們只是「借用」，不用自己訓練。</p></div>
+      <div class="card plain"><div class="k">跑模型的地方</div><h3>Groq</h3><p>美國公司，把開放模型放在自家機房讓大家免費呼叫。跟馬斯克的 Grok 是兩回事。</p></div>
+      <div class="card plain"><div class="k">寫程式的地方</div><h3>Google Colab</h3><p>Google 的免費線上程式筆記本，開網頁就能用，不用安裝。</p></div>
+      <div class="card plain"><div class="k">用滑鼠試 API</div><h3>Postman</h3><p>不寫程式也能呼叫 API 的工具，用來先看懂「請求」長什麼樣。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 課前準備 ================= -->
+<section class="panel" id="prepare" role="tabpanel">
+  <span class="eyebrow">開始前 10 分鐘 ‧ 在教室做就可以</span>
+  <h1>開始前，把這三個帳號弄好</h1>
+  <p class="lead">全程用瀏覽器，不用安裝任何軟體，也不用事先準備。第一次休息時照這一頁做完，實作就不會卡在登入。沒帶材料也沒關係，「材料」分頁有現成的。</p>
+
+  <div class="sec">
+    <h2>你需要</h2>
+    <div class="cards">
+      <div class="card"><div class="k">設備</div><h3>一台能上網的電腦</h3><p>學校電腦教室或自己的筆電都可以。請用 Chrome 或 Edge 瀏覽器。平板和手機不建議，畫面太小。</p></div>
+      <div class="card"><div class="k">帳號</div><h3>一個 Google 帳號</h3><p>Colab 和 Groq 都用它登入。學校配發的帳號有時會被管制，<b>個人 Gmail 最保險</b>。</p></div>
+      <div class="card"><div class="k">材料</div><h3>一段教材（有的話）</h3><p>自己的課文、作文或家長留言都可以，<b>先把學生姓名、座號拿掉</b>。沒有的話，用「材料」分頁的範例就好。</p></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>三個網站，請先登入或註冊</h2>
+    <div class="cards">
+      <div class="card"><div class="n">1</div><h3>Google Colab</h3><p>用 Google 帳號登入即可，不用另外註冊。打開看到能新增筆記本就 OK。</p><a class="site" href="https://colab.research.google.com" target="_blank" rel="noopener">colab.research.google.com</a></div>
+      <div class="card"><div class="n">2</div><h3>Groq Console</h3><p>點「Sign in with Google」。免費、不用信用卡。這裡會拿到今天最重要的東西：AI 金鑰。</p><a class="site" href="https://console.groq.com" target="_blank" rel="noopener">console.groq.com</a></div>
+      <div class="card"><div class="n">3</div><h3>Postman 網頁版</h3><p>免費註冊一個帳號（也可用 Google 登入）。註冊卡住的話，改用 Hoppscotch，不用註冊、填法一樣。</p><a class="site" href="https://www.postman.com" target="_blank" rel="noopener">postman.com</a><a class="site" href="https://hoppscotch.io" target="_blank" rel="noopener">hoppscotch.io（備用）</a></div>
+    </div>
+    <p class="note"><b>不用先申請金鑰</b>，上課會一起做。先登入得進去就好。</p>
+  </div>
+
+  <div class="sec">
+    <h2>今天會用到的連結</h2>
+    <div class="tbl"><table>
+      <tr><th>東西</th><th>連結</th><th>備註</th></tr>
+      <tr><td><b>Colab 筆記本</b></td><td>[上課當天公布連結]</td><td>打開後請先「檔案 → 在雲端硬碟中儲存副本」</td></tr>
+      <tr><td><b>講義</b></td><td>[講義連結]</td><td>步驟、程式碼、錯誤對照都在裡面</td></tr>
+      <tr><td><b>這個網站</b></td><td>[本頁網址]</td><td>所有要複製的東西都在「實作步驟」分頁</td></tr>
+    </table></div>
+  </div>
+
+  <div class="sec">
+    <h2>弄好了嗎？勾一下</h2>
+    <p class="lead" style="margin-top:0">勾起來的會記在你這台電腦上。</p>
+    <div class="check" id="checklist">
+      <label><input type="checkbox" id="c1" data-key="c1"><span>打得開 colab.research.google.com，而且已經登入 Google</span></label>
+      <label><input type="checkbox" id="c2" data-key="c2"><span>打得開 console.groq.com，登入後看得到左側的「API Keys」</span></label>
+      <label><input type="checkbox" id="c3" data-key="c3"><span>打得開 postman.com（或 hoppscotch.io）並登入</span></label>
+      <label><input type="checkbox" id="c4" data-key="c4"><span>知道「材料」分頁在哪裡，或自己的課文、作文已經去掉學生姓名</span></label>
+      <label><input type="checkbox" id="c5" data-key="c5"><span>想好小幫手的名字（小助、阿福、班長……）和它服務的年級</span></label>
+      <label><input type="checkbox" id="c6" data-key="c6"><span>這個網站的「實作步驟」分頁已經打開在另一個分頁</span></label>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 實作步驟 ================= -->
+<section class="panel" id="steps" role="tabpanel">
+  <span class="eyebrow">實作步驟 ‧ 跟著投影片走</span>
+  <h1>五個步驟，一次一個</h1>
+  <p class="lead">每一步都有「過關條件」。過關了就等大家，沒過關先看「卡住了」分頁，再問旁邊的人，再舉手。</p>
+
+  <div class="sec">
+    <div class="step">
+      <header><div class="n">1</div><div><h3>拿一把金鑰</h3><small>AI 餐廳的會員卡。沒有它，服務生不會理你。</small></div></header>
+      <ol>
+        <li>開 <b>console.groq.com</b>，用 Google 帳號登入</li>
+        <li>左側點 <b>API Keys</b> → <b>Create API Key</b>，名稱隨便取（例如 class）</li>
+        <li>複製那串 <b>gsk_</b> 開頭的金鑰，先貼到記事本。它只會顯示一次。</li>
+      </ol>
+      <p class="pass">過關條件：記事本裡有一串 gsk_ 開頭的文字。</p>
+      <p class="note"><b>金鑰就是你的密碼。</b>不截圖、不貼群組、不放進講義。課後回 Groq 刪掉重建。</p>
+    </div>
+
+    <div class="step">
+      <header><div class="n">2</div><div><h3>用滑鼠跟 AI 說第一句話（Postman）</h3><small>一個請求只有四個零件：網址、方法、標頭、內容。</small></div></header>
+      <ol>
+        <li>Postman 裡按 <b>New → HTTP</b>，方法選 <b>POST</b>，貼上網址</li>
+        <li><b>Headers</b> 分頁新增一列：Key 填 <b>Authorization</b>，Value 填 <b>Bearer 你的金鑰</b>（Bearer 後面一個空格）</li>
+        <li><b>Body</b> 分頁選 <b>raw</b>，右邊格式選 <b>JSON</b>，貼上下面那段，按 <b>Send</b></li>
+      </ol>
+      <dl class="kv">
+        <dt>網址</dt><dd>https://api.groq.com/openai/v1/chat/completions</dd>
+        <dt>方法</dt><dd>POST</dd>
+        <dt>Headers</dt><dd>Authorization: Bearer gsk_你的金鑰</dd>
+      </dl>
+      <div class="code l"><span class="lbl">BODY ‧ RAW ‧ JSON</span><button class="copy" type="button">複製</button><pre>{
+  <span class="kw">"model"</span>: <span class="s">"qwen/qwen3-32b"</span>,
+  <span class="kw">"messages"</span>: [
+    {<span class="kw">"role"</span>: <span class="s">"user"</span>, <span class="kw">"content"</span>: <span class="s">"用一句話介紹你自己"</span>}
+  ],
+  <span class="kw">"reasoning_effort"</span>: <span class="s">"none"</span>
+}</pre></div>
+      <p class="pass">過關條件：右上角狀態碼是綠色的 200 OK，回應裡 choices → message → content 那一行就是 AI 回你的話。過關的人把「用一句話介紹你自己」改成任何一句，再按一次 Send。</p>
+    </div>
+
+    <div class="step">
+      <header><div class="n">3</div><div><h3>同一件事，改用 Colab 做</h3><small>Colab 只要會三件事：存副本、貼金鑰、由上往下按播放鍵。</small></div></header>
+      <ol>
+        <li>打開講義裡的 Colab 筆記本連結，按 <b>檔案 → 在雲端硬碟中儲存副本</b>（沒存副本改不了內容）</li>
+        <li>第一格把金鑰貼在<b>引號中間</b>，前後不留空格</li>
+        <li>每一格左邊的 <b>▶</b> 由上往下按，等它轉完再按下一格。第一次會跳「這不是 Google 建立的筆記本」，按<b>仍要執行</b>。</li>
+      </ol>
+      <div class="code l"><span class="lbl">筆記本 STEP 3 ‧ 跟 POSTMAN 做的是同一件事</span><button class="copy" type="button">複製</button><pre><span class="kw">import</span> requests
+
+URL = <span class="s">"https://api.groq.com/openai/v1/chat/completions"</span>
+headers = {<span class="s">"Authorization"</span>: <span class="s">"Bearer "</span> + GROQ_API_KEY, <span class="s">"Content-Type"</span>: <span class="s">"application/json"</span>}
+body = {<span class="s">"model"</span>: <span class="s">"qwen/qwen3-32b"</span>, <span class="s">"reasoning_effort"</span>: <span class="s">"none"</span>,
+        <span class="s">"messages"</span>: [{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"用一句話介紹你自己"</span>}]}
+
+r = requests.<span class="kw">post</span>(URL, headers=headers, json=body, timeout=60)
+<span class="kw">print</span>(r.json()[<span class="s">"choices"</span>][0][<span class="s">"message"</span>][<span class="s">"content"</span>])</pre></div>
+      <p>對照看：URL 就是剛剛貼的網址、<code>post</code> 就是剛剛按的 Send、<code>r.json()</code> 就是剛剛看到的回應。</p>
+      <p class="pass">過關條件：這一格下面印出 AI 回的一句話。上半場完成。</p>
+    </div>
+
+    <div class="step">
+      <header><div class="n">4</div><div><h3>寫班級公約，讓它記得對話</h3><small>AI 本身不會記得；是我們每次把整本對話紀錄再寄一次，它才「記得」。</small></div></header>
+      <p><b>4-1 班級公約</b>：只改三個引號中間的中文。三個引號本身不要動。換名字、換年級、加規則都可以。</p>
+      <div class="code l"><span class="lbl">筆記本 4-1 ‧ 只改綠色的字</span><button class="copy" type="button">複製</button><pre>SYSTEM_PROMPT = <span class="s">"""你是「小助」，一位國小老師的教學小幫手。
+對象：國小中年級學生。用字簡單、親切，一律使用繁體中文。
+規則：
+- 老師沒有提供的資料不要自己編；不確定就說不確定
+- 回答用條列，方便老師直接複製使用
+- 題目要附答案與一句解析；作文回饋先講優點再講建議，語氣鼓勵
+"""</span>
+messages = [{<span class="s">"role"</span>: <span class="s">"system"</span>, <span class="s">"content"</span>: SYSTEM_PROMPT}]</pre></div>
+      <p><b>4-2 問一句、答一句的函式</b>：這格不用改，按播放鍵就好。三件事：把你的話加進清單、整份清單送出、把回答也記下來。</p>
+      <div class="code l"><span class="lbl">筆記本 4-2 ‧ 不用改</span><button class="copy" type="button">複製</button><pre><span class="kw">def</span> chat(user_text):
+    messages.append({<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: user_text})      <span class="cm"># 1 加進清單</span>
+    body = {<span class="s">"model"</span>: <span class="s">"qwen/qwen3-32b"</span>, <span class="s">"messages"</span>: messages,
+            <span class="s">"reasoning_effort"</span>: <span class="s">"none"</span>, <span class="s">"temperature"</span>: 0.5}
+    r = requests.<span class="kw">post</span>(URL, headers=headers, json=body, timeout=60)  <span class="cm"># 2 整份送出</span>
+    <span class="kw">if</span> r.status_code != 200:
+        messages.pop()
+        <span class="kw">return</span> f<span class="s">"（出錯了：{r.status_code}）{r.text[:300]}"</span>
+    answer = r.json()[<span class="s">"choices"</span>][0][<span class="s">"message"</span>][<span class="s">"content"</span>]
+    messages.append({<span class="s">"role"</span>: <span class="s">"assistant"</span>, <span class="s">"content"</span>: answer})    <span class="cm"># 3 回答也記下來</span>
+    <span class="kw">return</span> answer</pre></div>
+      <p><b>4-3 聊天迴圈</b>：執行後在輸入框打字、按 Enter；輸入 <code>bye</code> 結束。試試看：先說「我教三年級國語」，再貼一段課文請它摘要，再問「我教幾年級？」。</p>
+      <div class="code l"><span class="lbl">筆記本 4-3</span><button class="copy" type="button">複製</button><pre><span class="kw">while</span> True:
+    text = <span class="kw">input</span>(<span class="s">"老師："</span>)
+    <span class="kw">if</span> text == <span class="s">"bye"</span>:
+        <span class="kw">break</span>
+    <span class="kw">print</span>(<span class="s">"小助："</span>, chat(text))</pre></div>
+      <p class="pass">過關條件：它記得你教幾年級。覺得它講話太深或太淺，回 4-1 改年級，重新執行 4-1 → 4-2 → 4-3。</p>
+    </div>
+
+    <div class="step">
+      <header><div class="n">5</div><div><h3>任務卡：餵它真實的材料</h3><small>這是今天的主菜。</small></div></header>
+      <p>在聊天迴圈裡直接貼上你的課文或作文，再加一句指令。指令都在「任務卡」分頁，有複製按鈕。<b>不滿意就再講一句</b>（「太難了，再簡單一點」、「第 3 題換一題」），它記得前面的內容。</p>
+      <p class="pass">過關條件：做完任何一張任務卡，而且有用「再講一句」修過一次結果。</p>
+      <button class="cta" data-go="cards">去拿任務卡 →</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 任務卡 ================= -->
+<section class="panel" id="cards" role="tabpanel">
+  <span class="eyebrow">任務卡 ‧ 任選，做完一張再做下一張</span>
+  <h1>四張任務卡</h1>
+  <p class="lead">貼上材料，接著貼指令。貼之前先把學生姓名、座號、家庭狀況拿掉。</p>
+
+  <div class="sec">
+    <div class="cards">
+      <div class="card task"><div class="k">任務卡 A ‧ 出題</div><h3>貼一段課文</h3>
+        <div class="prompt"><button class="copy" type="button">複製</button>根據這段課文，出 5 題選擇題，每題附答案和一句解析。</div>
+        <p>再講一句：「第 3 題太難，換一題考『為什麼』的。」「加兩題是非題。」</p></div>
+      <div class="card task"><div class="k" style="color:var(--warn)">任務卡 B ‧ 作文回饋</div><h3>貼一篇作文</h3>
+        <div class="prompt"><button class="copy" type="button">複製</button>給這篇三年級作文三個優點、兩個建議，語氣鼓勵，不要幫他改寫。</div>
+        <p>再講一句：「建議請具體指出是哪一句。」「用學生看得懂的話講。」</p></div>
+      <div class="card task"><div class="k">任務卡 C ‧ 改寫程度</div><h3>貼一段太難的文字</h3>
+        <div class="prompt"><button class="copy" type="button">複製</button>把這段改寫成二年級看得懂的版本，不超過 100 字，保留重點。</div>
+        <p>再講一句：「太難了，再簡單一點。」「改成一年級的版本。」</p></div>
+      <div class="card task"><div class="k">任務卡 D ‧ 聯絡簿回覆</div><h3>貼家長的留言</h3>
+        <div class="prompt"><button class="copy" type="button">複製</button>幫我擬一則回覆，語氣溫和、不超過三句，先同理再說明。</div>
+        <p>再講一句：「再正式一點。」「加一句邀請家長來談。」</p></div>
+    </div>
+    <p class="note"><b>老師把關。</b>小幫手給的是草稿。出的題、給的評語，看過才用，不直接發給學生。</p>
+  </div>
+
+  <div class="sec">
+    <h2>不想用聊天迴圈？一格一格叫也可以</h2>
+    <div class="code l"><span class="lbl">筆記本 STEP 5</span><button class="copy" type="button">複製</button><pre>課文 = <span class="s">"""
+（把課文貼在這裡）
+"""</span>
+<span class="kw">print</span>(chat(<span class="s">"根據這段課文，出 5 題選擇題，每題附答案和一句解析。\n\n課文：\n"</span> + 課文))
+
+<span class="cm"># 不滿意就再講一句，它記得剛剛出的題</span>
+<span class="kw">print</span>(chat(<span class="s">"第 3 題太難，換一題考「為什麼」的。"</span>))</pre></div>
+  </div>
+</section>
+
+
+<!-- ================= 材料 ================= -->
+<section class="panel" id="materials" role="tabpanel">
+  <span class="eyebrow">材料 ‧ 沒帶自己的就用這些</span>
+  <h1>現成的練習材料</h1>
+  <p class="lead">四段原創範例，沒有任何真實學生的資料。按「複製」貼進聊天迴圈，再貼任務卡的指令。有自己的材料當然更好，記得先把學生姓名拿掉。</p>
+
+  <div class="sec">
+    <div class="step">
+      <header><div class="n">A</div><div><h3>範例課文：小河的旅行</h3><small>約 150 字，三年級程度。配任務卡 A（出題）。</small></div></header>
+      <div class="code l" style="font-family:var(--sans);font-size:16px;line-height:1.9"><span class="lbl">課文</span><button class="copy" type="button">複製</button><pre style="white-space:pre-wrap">小河從山上出發，一路往下跑。它經過樹林，樹葉掉在水面上，像一艘艘小船。它經過田地，農夫用它的水灌溉稻子。它經過村子，孩子們在岸邊洗腳、玩水。最後，小河流進大海。大海好大，小河有點害怕。可是它發現，海裡有好多和它一樣的小河。原來，每一條小河都走過自己的路，最後在這裡見面。</pre></div>
+    </div>
+
+    <div class="step">
+      <header><div class="n">B</div><div><h3>範例作文：下雨天</h3><small>三年級學生的口吻，約 200 字。配任務卡 B（作文回饋）。</small></div></header>
+      <div class="code l" style="font-family:var(--sans);font-size:16px;line-height:1.9"><span class="lbl">作文</span><button class="copy" type="button">複製</button><pre style="white-space:pre-wrap">今天早上我一打開窗戶，就看到外面在下雨。雨滴打在窗戶上，發出滴滴答答的聲音，好像在唱歌。我穿上黃色的雨衣，背著書包去上學。路上有很多水坑，我很想踩下去，可是媽媽說會弄濕鞋子，所以我只好小心的繞過去。到了學校，同學的雨傘都放在走廊，紅的、藍的、綠的，像一朵一朵的花。老師說下雨天不能到操場玩，我們就在教室裡下棋。我覺得下雨天雖然不能出去玩，可是也有好玩的地方。</pre></div>
+    </div>
+
+    <div class="step">
+      <header><div class="n">C</div><div><h3>範例難文：颱風怎麼形成</h3><small>百科式的說明文，對低年級太難。配任務卡 C（改寫程度）。</small></div></header>
+      <div class="code l" style="font-family:var(--sans);font-size:16px;line-height:1.9"><span class="lbl">說明文</span><button class="copy" type="button">複製</button><pre style="white-space:pre-wrap">颱風是在熱帶海洋上形成的強烈低氣壓系統。當海水溫度達到攝氏 26 度以上時，大量水氣蒸發上升，在地球自轉的影響下開始旋轉，逐漸形成一個中心氣壓極低、風速極高的風暴。颱風登陸之後，由於失去海面水氣的補給，加上地面摩擦力的影響，強度會逐漸減弱。</pre></div>
+    </div>
+
+    <div class="step">
+      <header><div class="n">D</div><div><h3>範例家長留言</h3><small>聯絡簿上常見的留言。配任務卡 D（聯絡簿回覆）。</small></div></header>
+      <div class="code l" style="font-family:var(--sans);font-size:16px;line-height:1.9"><span class="lbl">家長留言</span><button class="copy" type="button">複製</button><pre style="white-space:pre-wrap">老師您好，孩子昨天回家說數學作業不會寫，哭了很久，我們在家也不太會教。想請問老師，有沒有什麼方法可以在家幫他練習？麻煩老師了，謝謝。</pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 卡住了 ================= -->
+<section class="panel" id="help" role="tabpanel">
+  <span class="eyebrow">卡住了 ‧ 先看狀態碼</span>
+  <h1>卡住了怎麼辦</h1>
+  <p class="lead">順序：先看狀態碼對照表，再問旁邊做完的人，再舉手。九成的問題都在下面這張表裡。</p>
+
+  <div class="sec">
+    <h2>狀態碼與錯誤對照</h2>
+    <div class="tbl"><table>
+      <tr><th>看到</th><th>通常是</th><th>怎麼辦</th></tr>
+      <tr><td><b>401</b></td><td>金鑰錯、多了空白、或少了 Bearer 後面的空格</td><td>回 Step 1 重新貼；檢查 <code>"Bearer "</code> 後面有一個空格</td></tr>
+      <tr><td><b>400</b></td><td>JSON 格式不對、模型不支援某參數</td><td>先把 <code>"reasoning_effort": "none"</code> 那行拿掉再試</td></tr>
+      <tr><td><b>404</b></td><td>模型名稱不存在</td><td>到 console.groq.com/docs/models 查目前的名稱</td></tr>
+      <tr><td><b>429</b></td><td>全班同時打、超過免費額度</td><td>等 30 秒再試一次</td></tr>
+      <tr><td><b>500 / 503</b></td><td>Groq 那邊出事，不是你的錯</td><td>等一分鐘再試；一直壞就等講者切換備援</td></tr>
+      <tr><td><b>NameError: messages</b></td><td>前面的格子沒執行</td><td>從 4-1 重新依序執行</td></tr>
+      <tr><td><b>SyntaxError 在 4-1</b></td><td>不小心動到三個引號</td><td>補回 <code>"""</code>，或重新複製這一格</td></tr>
+      <tr><td><b>它忘記你說過的話</b></td><td>重新執行了 4-1，記憶被清空</td><td>正常現象，messages 重設了</td></tr>
+      <tr><td><b>改不了筆記本內容</b></td><td>沒有儲存副本</td><td>檔案 → 在雲端硬碟中儲存副本</td></tr>
+      <tr><td><b>Postman 註冊不了</b></td><td>學校網路擋了</td><td>改用 hoppscotch.io，欄位一樣</td></tr>
+      <tr><td><b>Groq 登不進去</b></td><td>學校帳號被管制</td><td>換個人 Gmail；或舉手拿講者的備用金鑰</td></tr>
+    </table></div>
+  </div>
+
+  <div class="sec">
+    <h2>在 Colab 裡這些畫面很正常</h2>
+    <div class="cards">
+      <div class="card plain"><h3>「這不是 Google 建立的筆記本」</h3><p>第一次按播放鍵會跳出來。按「仍要執行」。</p></div>
+      <div class="card plain"><h3>播放鍵一直轉</h3><p>Colab 第一次啟動要連線，等 10–20 秒。超過一分鐘：執行階段 → 重新啟動。</p></div>
+      <div class="card plain"><h3>輸入框不見了</h3><p>聊天迴圈的輸入框在那一格的正下方，往下捲一點。按了停止鍵就要重新執行那格。</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 進階與課後 ================= -->
+<section class="panel" id="more" role="tabpanel">
+  <span class="eyebrow">進階與課後</span>
+  <h1>做完了？再往前一步</h1>
+  <p class="lead">三個進階題的程式都在筆記本最後面，有興趣再按，不做也完全沒關係。</p>
+
+  <div class="sec">
+    <div class="cards">
+      <div class="card"><div class="k">進階 1</div><h3>固定輸出格式</h3><p>在公約裡要求它回表格或 JSON，結果就能直接貼進試算表。</p></div>
+      <div class="card"><div class="k">進階 2</div><h3>一次改一整班</h3><p>用迴圈把 30 篇作文逐篇送進去，結果存成檔案。批次處理前，學生姓名一律先拿掉。</p></div>
+      <div class="card"><div class="k">進階 3</div><h3>換一家 AI</h3><p>只改網址和模型名，程式一個字不動。Gemini、千問官方都是同一種格式。</p></div>
+    </div>
+  </div>
+
+  <div class="sec">
+    <h2>帶回學校用之前，三個原則</h2>
+    <div class="cards">
+      <div class="card"><div class="n">1</div><h3>學生個資不上傳</h3><p>姓名、座號、家庭狀況，貼之前先拿掉。資料會送到國外的伺服器。</p></div>
+      <div class="card"><div class="n">2</div><h3>它會錯，老師把關</h3><p>出的題、給的評語，看過才用，不直接發給學生。</p></div>
+      <div class="card"><div class="n">3</div><h3>當助手，不當老師</h3><p>它省下的時間，拿去陪學生。</p></div>
+    </div>
+    <p>免費額度每天約 1000 次，個人備課夠用。要全校共用、或接進學校系統，請聯絡毛焦點。</p>
+  </div>
+
+  <div class="sec">
+    <h2>課後可以試</h2>
+    <ul>
+      <li>把公約改成另一個科目：數學應用題、英語單字造句、自然科的觀察紀錄</li>
+      <li>把進階 2 的結果存成 CSV，用 Google 試算表打開</li>
+      <li>有興趣接 LINE 的：收到訊息 → 丟進 chat() → 把回答推回去，一樣是一個網址、一把金鑰、一段 JSON</li>
+    </ul>
+  </div>
+
+  <div class="sec">
+    <h2>聯絡</h2>
+    <div class="card plain"><h3>李冠霖 Oc ‧ 毛焦點科技股份有限公司 資訊長 / 共同創辦人</h3><p>[Email]　[LINE]　[網站]</p></div>
+  </div>
+</section>
+
+</main>
+
+<footer><div class="wrap"><span>毛焦點科技 ‧ 老師的 AI 小幫手 ‧ 在職專班 API 串接實作</span><span>金鑰是密碼，請勿公開。</span></div></footer>
+
+<script>
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('nav [role=tab]'));
+  var panels = Array.prototype.slice.call(document.querySelectorAll('.panel'));
+  function show(id, push){
+    if(!document.getElementById(id)) id = 'home';
+    tabs.forEach(function(t){ t.setAttribute('aria-selected', t.dataset.tab === id ? 'true' : 'false'); });
+    panels.forEach(function(p){ p.classList.toggle('on', p.id === id); });
+    if(push){ try{ history.replaceState(null, '', '#' + id); }catch(e){} }
+    window.scrollTo({top:0});
+  }
+  tabs.forEach(function(t){ t.addEventListener('click', function(){ show(t.dataset.tab, true); }); });
+  document.querySelectorAll('[data-go]').forEach(function(b){ b.addEventListener('click', function(){ show(b.dataset.go, true); }); });
+  document.querySelector('.brand').addEventListener('click', function(e){ e.preventDefault(); show('home', true); });
+  window.addEventListener('hashchange', function(){ show(location.hash.replace('#',''), false); });
+  show((location.hash || '#home').replace('#',''), false);
+
+  // copy buttons
+  document.querySelectorAll('button.copy').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      var box = btn.parentElement;
+      var pre = box.querySelector('pre');
+      var text = pre ? pre.textContent : Array.prototype.filter.call(box.childNodes, function(n){ return n.nodeType === 3; }).map(function(n){ return n.textContent; }).join('').trim();
+      function done(){ btn.textContent = '已複製'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent = '複製'; btn.classList.remove('ok'); }, 1600); }
+      function fallback(){
+        try{
+          var range = document.createRange(); range.selectNodeContents(pre || box); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
+          btn.textContent = '請按 Ctrl+C'; setTimeout(function(){ btn.textContent = '複製'; }, 2000);
+        }catch(e){}
+      }
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text).then(done, fallback); } else { fallback(); }
+    });
+  });
+
+  // checklist (per-viewer convenience)
+  var boxes = document.querySelectorAll('#checklist input');
+  boxes.forEach(function(cb){
+    try{ if(localStorage.getItem('prep-' + cb.dataset.key) === '1'){ cb.checked = true; cb.parentElement.classList.add('done'); } }catch(e){}
+    cb.addEventListener('change', function(){
+      cb.parentElement.classList.toggle('done', cb.checked);
+      try{ localStorage.setItem('prep-' + cb.dataset.key, cb.checked ? '1' : '0'); }catch(e){}
+    });
+  });
+})();
+</script>
+
+</body>
+</html>
